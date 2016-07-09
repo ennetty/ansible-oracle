@@ -2,6 +2,10 @@
 
   oracle_dbca_rsp: "dbca_{{ item.0.oracle_db_name }}.rsp"        # Name of responsefile used by dbca. One per database
 
+  oracle_create_db_sh: "create_db_{{ item.0.oracle_db_name }}.sh"   # Name of Shellscript for create database with sql-files
+  oracle_create_db_sql: "create_db_{{ item.0.oracle_db_name }}.sql" # initial sql-file for create database
+  oracle_create_db_initora: "init_{{ item.0.oracle_db_name }}.ora" # initial sql-file for create database
+
   oracle_user: oracle                        # User that will own the Oracle Installations.
   oracle_user_home: "/home/{{ oracle_user }}" # Home directory for oracle_user. Needed for passing in ssh-keys, profiles etc
   oracle_group: oinstall                          # Primary group for oracle_user. 

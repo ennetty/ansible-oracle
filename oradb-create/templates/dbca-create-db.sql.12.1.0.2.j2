@@ -1,0 +1,71 @@
+set verify off
+--define sysPassword=1
+--define systemPassword=1
+
+
+PROMPT CreateDB.sql
+SET VERIFY OFF
+connect / as SYSDBA
+set echo on
+--whenever sqlerror exit 1 
+spool {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/CreateDatabase.log append
+
+startup nomount pfile="{{ oracle_rsp_stage }}/{{ oracle_create_db_initora }}";
+
+
+CREATE DATABASE "{{ item.0.oracle_db_name }}"
+MAXINSTANCES 8
+MAXLOGHISTORY 1
+MAXLOGFILES 16
+MAXLOGMEMBERS 3
+MAXDATAFILES 1024
+DATAFILE SIZE 700M AUTOEXTEND ON NEXT  10240K MAXSIZE UNLIMITED
+EXTENT MANAGEMENT LOCAL
+SYSAUX DATAFILE SIZE 550M AUTOEXTEND ON NEXT  10240K MAXSIZE 2G
+SMALLFILE DEFAULT TEMPORARY TABLESPACE TEMP TEMPFILE SIZE 20M AUTOEXTEND ON NEXT  640K MAXSIZE 4G
+SMALLFILE UNDO TABLESPACE "UNDOTBS1" DATAFILE  SIZE 200M AUTOEXTEND ON NEXT  5120K MAXSIZE 3G
+CHARACTER SET WE8MSWIN1252
+NATIONAL CHARACTER SET AL16UTF16
+LOGFILE GROUP 1  SIZE {{ item.0.redolog_size_in_mb }}M,
+GROUP 2  SIZE {{ item.0.redolog_size_in_mb }}M,
+GROUP 3  SIZE {{ item.0.redolog_size_in_mb }}M
+USER SYS IDENTIFIED BY "{{ item.0.oracle_db_passwd }}" USER SYSTEM IDENTIFIED BY "{{ item.0.oracle_db_passwd }}"
+enable pluggable database;
+
+prompt CreateDBFiles.sql
+CREATE SMALLFILE TABLESPACE "USERS" LOGGING  
+DATAFILE  SIZE 5M 
+AUTOEXTEND ON NEXT  1280K MAXSIZE 3G
+EXTENT MANAGEMENT LOCAL  SEGMENT SPACE MANAGEMENT  AUTO;
+ALTER DATABASE DEFAULT TABLESPACE "USERS";
+
+PROMPT CreateDBCatalog.sql
+
+alter session set "_oracle_script"=true;
+alter pluggable database pdb$seed close;
+alter pluggable database pdb$seed open;
+
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catalog {{ item.0.oracle_home }}/rdbms/admin/catalog.sql;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catproc {{ item.0.oracle_home }}/rdbms/admin/catproc.sql;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catoctk {{ item.0.oracle_home }}/rdbms/admin/catoctk.sql;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b owminst {{ item.0.oracle_home }}/rdbms/admin/owminst.plb;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b pupbld -u SYSTEM/{{ item.0.oracle_db_passwd }} {{ item.0.oracle_home }}/sqlplus/admin/pupbld.sql;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b hlpbld -u SYSTEM/{{ item.0.oracle_db_passwd }} -a 1  {{ item.0.oracle_home }}/sqlplus/admin/help/hlpbld.sql 1helpus.sql;
+
+whenever sqlerror exit 1 
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/JServer.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/context.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/ordinst.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/interMedia.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/cwmlite.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/spatial.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/labelSecurity.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/apex.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/datavault.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/CreateClustDBViews.sql
+--host echo "SPFILE='+DATA/orcl/spfileorcl.ora'" > {{ item.0.oracle_home }}/dbs/initorcl.ora
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/lockAccount.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/postDBCreation.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/PDBCreation.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/plug_pdborcl.sql
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/postPDBCreation_pdborcl.sql

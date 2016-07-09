@@ -1,0 +1,35 @@
+#!/bin/sh
+
+ORACLE_BASE={{ oracle_base }}
+ORACLE_SID={{ item.0.oracle_db_name }}
+ORACLE_HOME={{ item.0.oracle_home }}
+
+OLD_UMASK=`umask`
+umask 0027
+mkdir -p $ORACLE_BASE 2>/dev/null
+mkdir -p $ORACLE_BASE/audit 2>/dev/null
+mkdir -p $ORACLE_BASE/admin/$ORACLE_SID/adump 2>/dev/null
+mkdir -p $ORACLE_BASE/admin/$ORACLE_SID/dpdump 2>/dev/null
+mkdir -p $ORACLE_BASE/admin/$ORACLE_SID/pfile 2>/dev/null
+mkdir -p $ORACLE_BASE/admin/$ORACLE_SID/scripts 2>/dev/null
+mkdir -p $ORACLE_BASE/admin/$ORACLE_SID/ 2>/dev/null
+
+mkdir -p $ORACLE_BASE/oracle/cfgtoollogs/dbca/$ORACLE_SID 2>/dev/null
+umask ${OLD_UMASK}
+
+PERL5LIB=$ORACLE_HOME/rdbms/admin:$PERL5LIB; export PERL5LIB
+export ORACLE_SID
+
+export PATH=$ORACLE_HOME/perl/bin:$PATH
+PATH=$ORACLE_HOME/bin:$PATH; export PATH
+
+$ORACLE_HOME/bin/orapwd file=$ORACLE_HOME/dbs/orapw$ORACLE_SID force=y format=12 password={{ item.0.oracle_db_passwd }}
+
+# /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/srvctl add database -d orcl -o /u01/app/oracle/product/12.1.0.2/dbhome_1 -p +DATA/orcl/spfileorcl.ora -n orcl
+# /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/srvctl disable database -d orcl
+# /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/orapwd file=/u01/app/oracle/product/12.1.0.2/dbhome_1/dbs/orapworcl force=y format=12
+#  /u01/app/oracle/12.1.0.2/grid/bin/setasmgidwrap o=/u01/app/oracle/product/12.1.0.2/dbhome_1/bin/oracle
+
+$ORACLE_HOME/bin/sqlplus /nolog @{{ oracle_rsp_stage }}/{{ oracle_create_db_sql }}
+
+

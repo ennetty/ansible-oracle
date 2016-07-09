@@ -1,0 +1,24 @@
+db_name="{{ item.0.oracle_db_name }}"
+db_block_size=8192
+open_cursors=300
+db_domain=""
+db_recovery_file_dest_size=4815m
+compatible=12.1.0.2.0
+diagnostic_dest={{ oracle_base }}
+audit_file_dest="{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/adump"
+audit_trail=NONE
+remote_login_passwordfile=EXCLUSIVE
+dispatchers="(PROTOCOL=TCP) (SERVICE={{ item.0.oracle_db_name }}XDB)"
+undo_tablespace=UNDOTBS1
+
+control_files='+DATA/{{ item.0.oracle_db_name }}/control01.ctl','+FRA/{{ item.0.oracle_db_name }}/control02.ctl'
+
+
+processes=300
+pga_aggregate_target=360m
+sga_target=1080m
+
+db_create_file_dest="+DATA"
+db_recovery_file_dest="+FRA"
+
+enable_pluggable_database=true
