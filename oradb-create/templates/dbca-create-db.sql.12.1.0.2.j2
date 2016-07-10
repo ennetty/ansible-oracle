@@ -44,7 +44,7 @@ PROMPT CreateDBCatalog.sql
 alter session set "_oracle_script"=true;
 alter pluggable database pdb$seed close;
 -- new Connection due to ORA-00704: bootstrap process failure
--- Hopefully this while pretend this error...
+-- Hopefully not hitting this error anymore
 connect / as sysdba
 alter session set "_oracle_script"=true;
 alter pluggable database pdb$seed open;
@@ -56,22 +56,54 @@ host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base 
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b pupbld -u SYSTEM/{{ item.0.oracle_db_passwd }} {{ item.0.oracle_home }}/sqlplus/admin/pupbld.sql;
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b hlpbld -u SYSTEM/{{ item.0.oracle_db_passwd }} -a 1  {{ item.0.oracle_home }}/sqlplus/admin/help/hlpbld.sql 1helpus.sql;
 
+{% if oracle_db_option_jserver == true or oracle_db_option_multimedia == true or oracle_db_option_spatial == true or oracle_db_option_olap == true %}
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/JServer.sql
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b initjvm {{ item.0.oracle_home }}/javavm/install/initjvm.sql;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b initxml {{ item.0.oracle_home }}/xdk/admin/initxml.sql;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b xmlja {{ item.0.oracle_home }}/xdk/admin/xmlja.sql;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catjava {{ item.0.oracle_home }}/rdbms/admin/catjava.sql;
+connect / as SYSDBA
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catxdbj {{ item.0.oracle_home }}/rdbms/admin/catxdbj.sql;
+{% endif %}
+
+{% if oracle_db_option_text == true %}
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/context.sql
+connect / as SYSDBA
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catctx -a 1  {{ item.0.oracle_home }}/ctx/admin/catctx.sql 1change_on_install 1SYSAUX 1TEMP 1LOCK;
+alter user CTXSYS account unlock identified by "CTXSYS";
+connect "CTXSYS"/"CTXSYS"
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b dr0defin -u CTXSYS/CTXSYS -a 1  {{ item.0.oracle_home }}/ctx/admin/defaults/dr0defin.sql 1\"AMERICAN\";
+connect / as SYSDBA
+alter user CTXSYS password expire account lock;
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b dbmsxdbt {{ item.0.oracle_home }}/rdbms/admin/dbmsxdbt.sql;
+
+{% endif %}
+{% if oracle_db_option_multimedia == true or oracle_db_option_spatial == true %}
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/ordinst.sql
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/interMedia.sql
---@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/cwmlite.sql
+{% endif %}
+{% if oracle_db_option_spatial == true %}
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/spatial.sql
+{% endif %}
+{% if oracle_db_option_olap == true %}
+--@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/cwmlite.sql
+{% endif %}
+{% if oracle_db_option_labelsecurity == true or oracle_db_option_dbvault== true %}
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/labelSecurity.sql
+{% endif %}
+{% if oracle_db_option_apex == true %}
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/apex.sql
+{% endif %}
+{% if oracle_db_option_dbvault== true %}
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/datavault.sql
+{% endif %}
 
-
-
+{% if oracle_install_option_gi == 'CRS_CONFIG' %}
 PROMPT CreateClustDBViews.sql
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catclust {{ item.0.oracle_home }}/rdbms/admin/catclust.sql;
+{% endif %}
 
-host echo "SPFILE='+DATA/{{ item.0.oracle_db_name }}/spfile{{ item.0.oracle_db_name }}.ora'" > {{ item.0.oracle_home }}/dbs/init{{ item.0.oracle_db_name }}.ora
+host echo "SPFILE='+{{ oracle_dbf_dir_asm }}/{{ item.0.oracle_db_name }}/spfile{{ item.0.oracle_db_name }}.ora'" > {{ item.0.oracle_home }}/dbs/init{{ item.0.oracle_db_name }}.ora
 
 
 
@@ -113,23 +145,14 @@ SET VERIFY OFF
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catbundleapply {{ item.0.oracle_home }}/rdbms/admin/catbundleapply.sql;
 
 set echo on
-create spfile='+DATA/{{ item.0.oracle_db_name }}/spfile{{ item.0.oracle_db_name }}.ora' FROM pfile='{{ oracle_rsp_stage }}/{{ oracle_create_db_initora }}';
+create spfile='+{{ oracle_dbf_dir_asm }}/{{ item.0.oracle_db_name }}/spfile{{ item.0.oracle_db_name }}.ora' FROM pfile='{{ oracle_rsp_stage }}/{{ oracle_create_db_initora }}';
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b utlrp {{ item.0.oracle_home }}/rdbms/admin/utlrp.sql;
 select comp_id, status from dba_registry;
 shutdown immediate;
 startup
 
 
--- host /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/srvctl enable database -d orcl;
-
-
--- host /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/srvctl start database -d orcl;
-
-
 connect / as SYSDBA
---@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/PDBCreation.sql
-
-
 
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/plug_pdborcl.sql
 

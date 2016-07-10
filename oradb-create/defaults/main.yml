@@ -28,6 +28,15 @@
   oracle_gi_cluster_type: STANDARD
   hostgroup_hub: "{{ hostgroup }}-hub"
   hostgroup_leaf: "{{ hostgroup }}-leaf"
+  create_dotprofile: true
+  oracle_db_option_jserver: true
+  oracle_db_option_text: false
+  oracle_db_option_multimedia: falsw
+  oracle_db_option_spatial: false
+  oracle_db_option_olap: false
+  oracle_db_option_labelsecurity: false
+  oracle_db_option_apex: false
+  oracle_db_option_dbvault: false
 
 
 
