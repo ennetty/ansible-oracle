@@ -31,5 +31,4 @@ $ORACLE_HOME/bin/orapwd file=$ORACLE_HOME/dbs/orapw$ORACLE_SID force=y format=12
 #  /u01/app/oracle/12.1.0.2/grid/bin/setasmgidwrap o=/u01/app/oracle/product/12.1.0.2/dbhome_1/bin/oracle
 
 $ORACLE_HOME/bin/sqlplus /nolog @{{ oracle_rsp_stage }}/{{ oracle_create_db_sql }}
-
-
+exit $?

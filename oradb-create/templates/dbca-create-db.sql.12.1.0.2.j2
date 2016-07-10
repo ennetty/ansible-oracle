@@ -1,17 +1,13 @@
 set verify off
---define sysPassword=1
---define systemPassword=1
-
 
 PROMPT CreateDB.sql
 SET VERIFY OFF
 connect / as SYSDBA
 set echo on
---whenever sqlerror exit 1 
+whenever sqlerror exit 1 
 spool {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/CreateDatabase.log append
 
 startup nomount pfile="{{ oracle_rsp_stage }}/{{ oracle_create_db_initora }}";
-
 
 CREATE DATABASE "{{ item.0.oracle_db_name }}"
 MAXINSTANCES 8
@@ -32,6 +28,8 @@ GROUP 3  SIZE {{ item.0.redolog_size_in_mb }}M
 USER SYS IDENTIFIED BY "{{ item.0.oracle_db_passwd }}" USER SYSTEM IDENTIFIED BY "{{ item.0.oracle_db_passwd }}"
 enable pluggable database;
 
+
+
 prompt CreateDBFiles.sql
 CREATE SMALLFILE TABLESPACE "USERS" LOGGING  
 DATAFILE  SIZE 5M 
@@ -39,6 +37,8 @@ AUTOEXTEND ON NEXT  1280K MAXSIZE 3G
 EXTENT MANAGEMENT LOCAL  SEGMENT SPACE MANAGEMENT  AUTO;
 ALTER DATABASE DEFAULT TABLESPACE "USERS";
 
+host sync
+host sleep 5
 PROMPT CreateDBCatalog.sql
 
 alter session set "_oracle_script"=true;
@@ -52,7 +52,6 @@ host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base 
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b pupbld -u SYSTEM/{{ item.0.oracle_db_passwd }} {{ item.0.oracle_home }}/sqlplus/admin/pupbld.sql;
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b hlpbld -u SYSTEM/{{ item.0.oracle_db_passwd }} -a 1  {{ item.0.oracle_home }}/sqlplus/admin/help/hlpbld.sql 1helpus.sql;
 
-whenever sqlerror exit 1 
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/JServer.sql
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/context.sql
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/ordinst.sql
@@ -62,10 +61,77 @@ whenever sqlerror exit 1
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/labelSecurity.sql
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/apex.sql
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/datavault.sql
---@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/CreateClustDBViews.sql
---host echo "SPFILE='+DATA/orcl/spfileorcl.ora'" > {{ item.0.oracle_home }}/dbs/initorcl.ora
---@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/lockAccount.sql
---@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/postDBCreation.sql
+
+
+
+PROMPT CreateClustDBViews.sql
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catclust {{ item.0.oracle_home }}/rdbms/admin/catclust.sql;
+
+host echo "SPFILE='+DATA/{{ item.0.oracle_db_name }}/spfile{{ item.0.oracle_db_name }}.ora'" > {{ item.0.oracle_home }}/dbs/init{{ item.0.oracle_db_name }}.ora
+
+
+
+PROMPT lockAccount.sql
+set echo on
+alter session set "_oracle_script"=true;
+alter pluggable database pdb$seed close;
+alter pluggable database pdb$seed open;
+BEGIN
+ FOR item IN ( SELECT USERNAME FROM DBA_USERS WHERE ACCOUNT_STATUS IN ('OPEN', 'LOCKED', 'EXPIRED') AND USERNAME NOT IN ( 'SYS','SYSTEM') )
+ LOOP
+  dbms_output.put_line('Locking and Expiring: ' || item.USERNAME);
+  execute immediate 'alter user ' ||
+         sys.dbms_assert.enquote_name(
+         sys.dbms_assert.schema_name(
+         item.USERNAME),false) || ' password expire account lock' ;
+ END LOOP;
+END;
+/
+
+alter session set container=pdb$seed;
+BEGIN
+ FOR item IN ( SELECT USERNAME FROM DBA_USERS WHERE ACCOUNT_STATUS IN ('OPEN', 'LOCKED', 'EXPIRED') AND USERNAME NOT IN ('SYS','SYSTEM') )
+ LOOP
+  dbms_output.put_line('Locking and Expiring: ' || item.USERNAME);
+  execute immediate 'alter user ' ||
+         sys.dbms_assert.enquote_name(
+         sys.dbms_assert.schema_name(
+         item.USERNAME),false) || ' password expire account lock' ;
+ END LOOP;
+END;
+/
+alter session set container=cdb$root;
+
+
+
+PROMPT postDBCreation.sql
+SET VERIFY OFF
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catbundleapply {{ item.0.oracle_home }}/rdbms/admin/catbundleapply.sql;
+
+set echo on
+create spfile='+DATA/spfile{{ item.0.oracle_db_name }}.ora' FROM pfile="{{ oracle_rsp_stage }}/{{ oracle_create_db_initora }}";
+host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b utlrp {{ item.0.oracle_home }}/rdbms/admin/utlrp.sql;
+select comp_id, status from dba_registry;
+shutdown immediate;
+startup
+
+
+-- host /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/srvctl enable database -d orcl;
+
+
+-- host /u01/app/oracle/product/12.1.0.2/dbhome_1/bin/srvctl start database -d orcl;
+
+
+connect / as SYSDBA
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/PDBCreation.sql
+
+
+
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/plug_pdborcl.sql
+
+
+
 --@{{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts/postPDBCreation_pdborcl.sql
+
+exit
+
