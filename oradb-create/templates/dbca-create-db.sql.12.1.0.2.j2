@@ -43,6 +43,10 @@ PROMPT CreateDBCatalog.sql
 
 alter session set "_oracle_script"=true;
 alter pluggable database pdb$seed close;
+-- new Connection due to ORA-00704: bootstrap process failure
+-- Hopefully this while pretend this error...
+connect / as sysdba
+alter session set "_oracle_script"=true;
 alter pluggable database pdb$seed open;
 
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catalog {{ item.0.oracle_home }}/rdbms/admin/catalog.sql;
@@ -109,7 +113,7 @@ SET VERIFY OFF
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b catbundleapply {{ item.0.oracle_home }}/rdbms/admin/catbundleapply.sql;
 
 set echo on
-create spfile='+DATA/spfile{{ item.0.oracle_db_name }}.ora' FROM pfile="{{ oracle_rsp_stage }}/{{ oracle_create_db_initora }}";
+create spfile='+DATA/{{ item.0.oracle_db_name }}/spfile{{ item.0.oracle_db_name }}.ora' FROM pfile='{{ oracle_rsp_stage }}/{{ oracle_create_db_initora }}';
 host perl {{ item.0.oracle_home }}/rdbms/admin/catcon.pl -n 1 -l {{ oracle_base }}/admin/{{ item.0.oracle_db_name }}/scripts -b utlrp {{ item.0.oracle_home }}/rdbms/admin/utlrp.sql;
 select comp_id, status from dba_registry;
 shutdown immediate;
