@@ -1,0 +1,51 @@
+---
+   configure_host_disks: true
+
+   host_fs_layout:
+    - vgname: orabasevg
+      state: present
+      filesystem:
+        - {mntp: /u01, lvname: orabaselv, lvsize: 12G, fstype: ext4}
+      disk:
+        - {device: /dev/sdb, pvname: /dev/sdb1}
+
+    - vgname: oradatavg
+      state: present
+      filesystem:
+        - {mntp: /u02, lvname: oradatalv, lvsize: 15G, fstype: ext4}
+        - {mntp: /u03, lvname: orafralv, lvsize: 10G, fstype: ext4}
+      disk:
+        - {device: /dev/sdc, pvname: /dev/sdc1}
+
+   autostartup_service: True
+   oracle_dbf_dir_fs: /u02/oradata
+   oracle_reco_dir_fs: /u03/fra
+
+
+   oracle_patch_list:
+      - desc: "Oracle Warehouse Builder PSE Bug Number : 24615704"
+        version: 11.2.0.4
+        patchid: 24615704
+        subpath: 
+        opatchauto: False
+        ORACLE_HOME:
+           - path: /u01/app/oracle/11.2.0.4/dbhome1
+             apply: True
+
+   oracle_databases:                                           # Dictionary describing the databases to be installed
+        - home: dbhome1
+          oracle_version_db: 11.2.0.4                          # Oracle versiono
+          oracle_edition: EE                                   # The edition of database-server (EE,SE,SEONE)
+          oracle_db_name: db1                                  # Database name
+          oracle_db_passwd: Oracle123                          # Passwords (sys/system/dbsnm etc)
+          oracle_db_type: SI                                   # Type of database (RAC,RACONENODE,SI)
+          is_container: "false"                                # (true/false) Is the database a container database
+          pdb_prefix: pdb
+          num_pdbs: 1
+          is_racone: "false"                                   # (true/false) Is the database a RAC ONE NODE Database
+          oracle_db_mem_totalmb: 1024                          # Amount of RAM to be used for SGA
+          storage_type: FS                                     # Database storage to be used. ASM or FS. 
+          oracle_init_params: "open_cursors=300,processes=700"
+          oracle_database_type: MULTIPURPOSE                   # MULTIPURPOSE|DATA_WAREHOUSING|OLTP
+          redolog_size_in_mb: 100
+          state: present

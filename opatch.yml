@@ -1,0 +1,8 @@
+
+ - name: Database Server Installation & Database Creation
+   hosts: dbowb
+   user: vagrant
+   sudo: yes
+   roles:
+      - oradb-opatch
+
