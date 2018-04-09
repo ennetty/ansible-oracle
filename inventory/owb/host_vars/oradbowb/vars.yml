@@ -26,8 +26,36 @@
       - desc: "Oracle Warehouse Builder PSE Bug Number : 24615704"
         version: 11.2.0.4
         patchid: 24615704
+        opatchauto: False
         subpath: 
         opatchauto: False
+        ORACLE_HOME:
+           - path: /u01/app/oracle/11.2.0.4/dbhome1
+             apply: True
+
+      - desc: "Database Patch Set Update : 11.2.0.4.171017 (26392168)"
+        version: 11.2.0.4
+        patchid: 26925576
+        opatchauto: False
+        subpath: 27011017/27011017
+        opatchauto: False
+        postsql: 
+           - "?/rdbms/admin/catbundle.sql psu apply"
+           - "?/rdbms/admin/utlrp"
+#           - "?/rdbms/admin/dbmsjdev.sql"     # only needed when Patch 26925532 is NOT applied
+#           - "exec dbms_java_dev.disable"     # only needed when Patch 26925532 is NOT applied
+        ORACLE_HOME:
+           - path: /u01/app/oracle/11.2.0.4/dbhome1
+             apply: True
+
+      - desc: "OJVM PATCH SET UPDATE 11.2.0.4.180116"
+        version: 11.2.0.4
+        patchid: 26925532
+        opatchauto: False
+        subpath: 27011017/27011017
+        opatchauto: False
+        postsql: 
+          - "?/sqlpatch/26925532/postinstall.sql"
         ORACLE_HOME:
            - path: /u01/app/oracle/11.2.0.4/dbhome1
              apply: True
